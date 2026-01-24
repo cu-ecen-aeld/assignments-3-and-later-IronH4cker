@@ -11,7 +11,28 @@ KERNEL_VERSION=v5.15.163
 BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
-CROSS_COMPILE=${CROSS_COMPILE:-aarch64-linux-gnu-}
+#CROSS_COMPILE=${CROSS_COMPILE:-aarch64-linux-gnu-}
+# Si el entorno ya define CROSS_COMPILE, lo respetamos.
+# Si no, intentamos auto-detectar un toolchain ARM64 disponible.
+if [ -z "${CROSS_COMPILE:-}" ]; then
+    if command -v aarch64-none-linux-gnu-gcc >/dev/null 2>&1; then
+        CROSS_COMPILE="aarch64-none-linux-gnu-"
+    elif command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then
+        CROSS_COMPILE="aarch64-linux-gnu-"
+    else
+        echo "ERROR: No ARM64 cross-compiler found in PATH."
+        echo "Expected one of: aarch64-none-linux-gnu-gcc or aarch64-linux-gnu-gcc"
+        exit 1
+    fi
+else
+    # Si vino definido, validamos que exista (para fallar con mensaje claro)
+    if ! command -v "${CROSS_COMPILE}gcc" >/dev/null 2>&1; then
+        echo "ERROR: CROSS_COMPILE is set to '${CROSS_COMPILE}' but '${CROSS_COMPILE}gcc' is not in PATH."
+        exit 1
+    fi
+fi
+
+echo "Using CROSS_COMPILE=${CROSS_COMPILE}"
 
 if [ $# -lt 1 ]
 then
