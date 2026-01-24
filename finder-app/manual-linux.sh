@@ -286,36 +286,48 @@ sudo cp -a ${LIBDIR}/libresolv.so.* ${OUTDIR}/rootfs/lib/ 2>/dev/null || true
 
 
 # ------------------------------------------------------------
-# Dynamic loader (ELF interpreter)
+# Dynamic loader (ELF interpreter) (IMPRESCINDIBLE)
 # ------------------------------------------------------------
-# El loader es el programa que el kernel usa para arrancar
-# binarios dinámicos (ANTES de ejecutar main()).
-#
-# Ejemplo típico:
-#   /lib/ld-linux-aarch64.so.1
-#
-# Extraemos EXACTAMENTE el loader que necesita busybox:
-LOADER=$(${CROSS_COMPILE}readelf -a ${OUTDIR}/rootfs/bin/busybox 2>/dev/null \
+# LOADER viene de readelf y típicamente es /lib/ld-linux-aarch64.so.1
+LOADER=$(${CROSS_COMPILE}readelf -a "${OUTDIR}/rootfs/bin/busybox" 2>/dev/null \
     | awk '/program interpreter/ {gsub(/[\[\]]/,"",$NF); print $NF}')
 
 if [ -n "${LOADER}" ]; then
-    # Creamos el path destino dentro del rootfs
-    sudo mkdir -p ${OUTDIR}/rootfs$(dirname ${LOADER})
+    sudo mkdir -p "${OUTDIR}/rootfs$(dirname "${LOADER}")"
 
-    # En Ubuntu, el loader ARM64 suele estar aquí:
-    if [ -f /lib/aarch64-linux-gnu/$(basename ${LOADER}) ]; then
-        sudo cp -a /lib/aarch64-linux-gnu/$(basename ${LOADER}) \
-            ${OUTDIR}/rootfs${LOADER}
+    LOADER_BASENAME="$(basename "${LOADER}")"
 
-    # Fallback: a veces está junto a libc
-    elif [ -f ${LIBDIR}/$(basename ${LOADER}) ]; then
-        sudo cp -a ${LIBDIR}/$(basename ${LOADER}) \
-            ${OUTDIR}/rootfs${LOADER}
+    # Lista de candidatos donde podría estar el loader en distintos toolchains/hosts
+    #  - Ubuntu host: /lib/aarch64-linux-gnu/...
+    #  - toolchain sysroot cerca de LIBDIR (lib, lib64, libc/lib, etc.)
+    CANDIDATES=(
+        "/lib/aarch64-linux-gnu/${LOADER_BASENAME}"
+        "${LIBDIR}/${LOADER_BASENAME}"
+        "${LIBDIR}/../lib/${LOADER_BASENAME}"
+        "${LIBDIR}/../lib64/${LOADER_BASENAME}"
+        "${LIBDIR}/../libc/lib/${LOADER_BASENAME}"
+        "${LIBDIR}/../libc/lib64/${LOADER_BASENAME}"
+    )
 
-    else
-        echo "ERROR: Could not find ARM64 loader ${LOADER} on host"
+    FOUND_LOADER=""
+    for c in "${CANDIDATES[@]}"; do
+        if [ -f "${c}" ]; then
+            FOUND_LOADER="${c}"
+            break
+        fi
+    done
+
+    if [ -z "${FOUND_LOADER}" ]; then
+        echo "ERROR: Could not find ARM64 loader ${LOADER} on host."
+        echo "Searched:"
+        for c in "${CANDIDATES[@]}"; do
+            echo "  - ${c}"
+        done
         exit 1
     fi
+
+    echo "Found loader at: ${FOUND_LOADER}"
+    sudo cp -a "${FOUND_LOADER}" "${OUTDIR}/rootfs${LOADER}"
 fi
 
 # TODO: Make device nodes
