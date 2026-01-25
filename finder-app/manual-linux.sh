@@ -410,6 +410,19 @@ echo "Sanity check: autorun shebang and perms"
 head -n 1 "${OUTDIR}/rootfs/home/autorun-qemu.sh" || true
 ls -l "${OUTDIR}/rootfs/home/autorun-qemu.sh" || true
 
+# ------------------------------------------------------------
+# ENSURE /init EXISTS (CRITICAL FOR AUTOTEST)
+# ------------------------------------------------------------
+# El kernel busca /init por defecto al arrancar.
+# El autotest NO siempre pasa "init=/home/autorun-qemu.sh",
+# así que debemos crear /init explícitamente.
+#
+# Hacemos que /init apunte a autorun-qemu.sh
+# para que el kernel ejecute exactamente el flujo esperado.
+ln -sf /home/autorun-qemu.sh ${OUTDIR}/rootfs/init
+chmod +x ${OUTDIR}/rootfs/init
+
+
 
 # TODO: Chown the root directory
 # ============================================================
