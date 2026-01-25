@@ -384,6 +384,12 @@ fi
 # Si ese script usa /bin/bash o tiene CRLF, el init falla (exit 127 => 0x7f00)
 # y el kernel hace panic.
 
+# 0) Quitar CRLF SIEMPRE (no dependemos de dos2unix)
+for f in "${OUTDIR}/rootfs/home/"*.sh; do
+    [ -f "$f" ] || continue
+    sed -i 's/\r$//' "$f"
+done
+
 # 1) Forzar shebang a /bin/sh (BusyBox NO incluye bash)
 for f in "${OUTDIR}/rootfs/home/autorun-qemu.sh" \
          "${OUTDIR}/rootfs/home/finder.sh" \
@@ -394,17 +400,11 @@ do
     fi
 done
 
-# 2) Eliminar CRLF si existe (si editaste desde Windows/VSCode con CRLF)
-if command -v dos2unix >/dev/null 2>&1; then
-    dos2unix "${OUTDIR}/rootfs/home/"*.sh 2>/dev/null || true
-fi
-
-# 3) Asegurar permisos de ejecución (si no, init también puede fallar)
+# 2) Permisos de ejecución
 chmod +x "${OUTDIR}/rootfs/home/autorun-qemu.sh" 2>/dev/null || true
 chmod +x "${OUTDIR}/rootfs/home/finder-test.sh" 2>/dev/null || true
 chmod +x "${OUTDIR}/rootfs/home/finder.sh" 2>/dev/null || true
 chmod +x "${OUTDIR}/rootfs/home/writer" 2>/dev/null || true
-
 
 echo "Sanity check: autorun shebang and perms"
 head -n 1 "${OUTDIR}/rootfs/home/autorun-qemu.sh" || true
