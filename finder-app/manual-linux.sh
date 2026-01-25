@@ -269,7 +269,6 @@ sudo mkdir -p ${OUTDIR}/rootfs/lib
 sudo cp -a ${LIBDIR}/libc.so.6 ${OUTDIR}/rootfs/lib/
 sudo cp -a ${LIBDIR}/libc.so.* ${OUTDIR}/rootfs/lib/ 2>/dev/null || true
 
-
 # ------------------------------------------------------------
 # libm (Math library)
 # ------------------------------------------------------------
@@ -283,6 +282,16 @@ sudo cp -a ${LIBDIR}/libm.so.* ${OUTDIR}/rootfs/lib/ 2>/dev/null || true
 # ------------------------------------------------------------
 # No siempre es crítica, pero muchas distros la incluyen
 sudo cp -a ${LIBDIR}/libresolv.so.* ${OUTDIR}/rootfs/lib/ 2>/dev/null || true
+
+# ------------------------------------------------------------
+# ALSO install runtime libraries into /lib64 (required by loader)
+# ------------------------------------------------------------
+
+sudo mkdir -p ${OUTDIR}/rootfs/lib64
+
+sudo cp -a ${LIBDIR}/libc.so.*     ${OUTDIR}/rootfs/lib64/ 2>/dev/null || true
+sudo cp -a ${LIBDIR}/libm.so.*     ${OUTDIR}/rootfs/lib64/ 2>/dev/null || true
+sudo cp -a ${LIBDIR}/libresolv.so.* ${OUTDIR}/rootfs/lib64/ 2>/dev/null || true
 
 
 # ------------------------------------------------------------
