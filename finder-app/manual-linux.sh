@@ -366,7 +366,7 @@ fi
 
 cp -f ${FINDER_APP_DIR}/finder.sh ${OUTDIR}/rootfs/home/ 2>/dev/null || true        # Copia finder.sh al /home del rootfs
 cp -f ${FINDER_APP_DIR}/finder-test.sh ${OUTDIR}/rootfs/home/ 2>/dev/null || true   # Copia finder-test.sh al /home del rootfs
-cp -f ${FINDER_APP_DIR}/autorun-qemu.sh ${OUTDIR}/rootfs/home/ 2>/dev/null || true  # Copia autorun-qemu.sh al /home del rootfs
+cp -f "${FINDER_APP_DIR}/autorun-qemu.sh" "${OUTDIR}/rootfs/home/"                  # Copia autorun-qemu.sh al /home del rootfs
 
 cp -f ${FINDER_APP_DIR}/../conf/username.txt ${OUTDIR}/rootfs/home/conf/ 2>/dev/null || true   # Copia conf/username.txt al target
 cp -f ${FINDER_APP_DIR}/../conf/assignment.txt ${OUTDIR}/rootfs/home/conf/ 2>/dev/null || true # Copia conf/assignment.txt al target
@@ -410,19 +410,25 @@ echo "Sanity check: autorun shebang and perms"
 head -n 1 "${OUTDIR}/rootfs/home/autorun-qemu.sh" || true
 ls -l "${OUTDIR}/rootfs/home/autorun-qemu.sh" || true
 
-# ------------------------------------------------------------
-# ENSURE /init EXISTS (CRITICAL FOR AUTOTEST)
-# ------------------------------------------------------------
-# El kernel busca /init por defecto al arrancar.
-# El autotest NO siempre pasa "init=/home/autorun-qemu.sh",
-# así que debemos crear /init explícitamente.
-#
-# Hacemos que /init apunte a autorun-qemu.sh
-# para que el kernel ejecute exactamente el flujo esperado.
-ln -sf /home/autorun-qemu.sh ${OUTDIR}/rootfs/init
-chmod +x ${OUTDIR}/rootfs/init
 
 
+# ------------------------------------------------------------
+# Create /init (AUTOTEST CRITICAL)
+# ------------------------------------------------------------
+# El kernel busca /init dentro del initramfs para arrancar userspace.
+# El autotest espera que /init ejecute /home/autorun-qemu.sh.
+
+# Nos aseguramos de que el destino existe antes de crear el symlink
+if [ ! -f "${OUTDIR}/rootfs/home/autorun-qemu.sh" ]; then
+    echo "ERROR: autorun-qemu.sh was not copied into rootfs/home"
+    exit 1
+fi
+
+# Creamos /init como symlink a /home/autorun-qemu.sh
+ln -sf /home/autorun-qemu.sh "${OUTDIR}/rootfs/init"
+
+# IMPORTANTE: el symlink debe apuntar a algo existente, y el script debe ser ejecutable
+chmod +x "${OUTDIR}/rootfs/home/autorun-qemu.sh"
 
 # TODO: Chown the root directory
 # ============================================================
