@@ -375,15 +375,40 @@ if [ -f "${OUTDIR}/rootfs/home/finder-test.sh" ]; then                          
     sed -i 's|\.\./conf/assignment\.txt|conf/assignment.txt|g' ${OUTDIR}/rootfs/home/finder-test.sh # Ajusta ruta requerida por Part 2
 fi
 
-if [ -f "${OUTDIR}/rootfs/home/finder.sh" ]; then                                   # Si finder.sh existe en rootfs
-    sed -i '1s|^#! */bin/bash|#!/bin/sh|' ${OUTDIR}/rootfs/home/finder.sh || true   # Cambia shebang bash->sh (busybox no trae bash)
+
+
+# ------------------------------------------------------------
+# FIX scripts for BusyBox environment (AUTOTEST CRITICAL)
+# ------------------------------------------------------------
+# El autotest normalmente arranca QEMU ejecutando /home/autorun-qemu.sh.
+# Si ese script usa /bin/bash o tiene CRLF, el init falla (exit 127 => 0x7f00)
+# y el kernel hace panic.
+
+# 1) Forzar shebang a /bin/sh (BusyBox NO incluye bash)
+for f in "${OUTDIR}/rootfs/home/autorun-qemu.sh" \
+         "${OUTDIR}/rootfs/home/finder.sh" \
+         "${OUTDIR}/rootfs/home/finder-test.sh"
+do
+    if [ -f "${f}" ]; then
+        sed -i '1s|^#! */bin/bash|#!/bin/sh|' "${f}" || true
+    fi
+done
+
+# 2) Eliminar CRLF si existe (si editaste desde Windows/VSCode con CRLF)
+if command -v dos2unix >/dev/null 2>&1; then
+    dos2unix "${OUTDIR}/rootfs/home/"*.sh 2>/dev/null || true
 fi
 
-chmod +x ${OUTDIR}/rootfs/home/*.sh 2>/dev/null || true   # Asegura que scripts sean ejecutables
-chmod +x ${OUTDIR}/rootfs/home/writer 2>/dev/null || true # Asegura que writer sea ejecutable
+# 3) Asegurar permisos de ejecución (si no, init también puede fallar)
+chmod +x "${OUTDIR}/rootfs/home/autorun-qemu.sh" 2>/dev/null || true
+chmod +x "${OUTDIR}/rootfs/home/finder-test.sh" 2>/dev/null || true
+chmod +x "${OUTDIR}/rootfs/home/finder.sh" 2>/dev/null || true
+chmod +x "${OUTDIR}/rootfs/home/writer" 2>/dev/null || true
 
 
-
+echo "Sanity check: autorun shebang and perms"
+head -n 1 "${OUTDIR}/rootfs/home/autorun-qemu.sh" || true
+ls -l "${OUTDIR}/rootfs/home/autorun-qemu.sh" || true
 
 
 # TODO: Chown the root directory
